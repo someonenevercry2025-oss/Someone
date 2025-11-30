@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seni Ceria: Mewarnai untuk Anak SD</title>
+    <!-- Load Tailwind CSS CDN --><script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Mengatur font yang ceria dan mudah dibaca */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&display=swap');
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f7f3e8; /* Latar belakang krem muda */
+        }
+        /* Style untuk palet warna */
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .color-swatch.selected {
+            border: 5px solid #3b82f6; /* Warna biru cerah untuk indikator terpilih */
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+        }
+        /* Styling tombol besar untuk anak-anak */
+        .app-button {
+            padding: 12px 20px;
+            font-weight: 700;
+            border-radius: 9999px;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .app-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+        /* Style untuk area mewarnai SVG */
+        #coloring-svg path {
+            cursor: pointer;
+            transition: fill 0.2s;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        #coloring-svg path:hover {
+            opacity: 0.8;
+        }
+
+        /* Responsive layout tweaks */
+        @media (max-width: 768px) {
+            .app-button {
+                padding: 10px 16px;
+                font-size: 0.875rem;
+            }
+            .color-swatch {
+                width: 35px;
+                height: 35px;
+                margin: 4px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Kontainer Utama Aplikasi --><div id="app-container" class="w-full max-w-6xl bg-white shadow-2xl rounded-3xl p-6 md:p-10 border-4 border-yellow-500">
+        
+        <!-- Halaman Menu Utama --><div id="main-menu" class="hidden">
+            <h1 class="text-4xl font-bold text-center text-red-600 mb-8">Pilih Gambar untuk Diwarnai!</h1>
+            <div id="image-selection-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                <!-- Thumbnail akan di-generate di sini --></div>
+        </div>
+
+        <!-- Halaman Mewarnai --><div id="coloring-page" class="hidden">
+            <div class="flex flex-col md:flex-row gap-6 h-full">
+                
+                <!-- Area Mewarnai dan Palet (Kiri/Atas) --><div class="flex-grow flex flex-col items-center p-4 bg-gray-100 rounded-xl shadow-inner md:w-2/3">
+                    <h2 id="coloring-title" class="text-2xl font-bold text-gray-800 mb-4">Mewarnai</h2>
+                    
+                    <!-- Area Gambar SVG --><div id="svg-container" class="w-full max-w-lg aspect-square bg-white border-4 border-gray-300 rounded-lg overflow-hidden p-2">
+                        <!-- SVG akan di-inject di sini oleh JS --></div>
+
+                    <!-- Palet Warna --><div id="color-palette" class="flex flex-wrap justify-center gap-3 p-4 mt-4 bg-white rounded-xl shadow-md border border-gray-200">
+                        <!-- Palet warna akan di-generate di sini --></div>
+                </div>
+
+                <!-- Kontrol & Referensi (Kanan/Bawah) --><div class="md:w-1/3 flex flex-col gap-6">
+                    
+                    <!-- Gambar Referensi (Berwarna) --><div class="bg-yellow-100 p-4 rounded-xl shadow-lg border-2 border-yellow-400">
+                        <h3 class="text-xl font-bold text-yellow-700 mb-3 text-center">Contoh Warna</h3>
+                        <div id="reference-image-container" class="w-full aspect-square border-2 border-dashed border-gray-400 rounded-lg p-1">
+                            <!-- Gambar Referensi (Colored SVG) akan di-inject di sini --></div>
+                    </div>
+                    
+                    <!-- Keterangan Status --><div id="status-message" class="text-center p-3 bg-blue-100 text-blue-700 font-semibold rounded-lg shadow">
+                        Klik area gambar dan pilih warna!
+                    </div>
+
+                    <!-- Tombol Aksi --><div class="flex flex-col gap-3">
+                        <button id="btn-undo" class="app-button bg-blue-500 text-white shadow-blue-700/50">↩️ Undo</button>
+                        <button id="btn-redo" class="app-button bg-green-500 text-white shadow-green-700/50">↪️ Redo</button>
+                        <button id="btn-reset" class="app-button bg-red-500 text-white shadow-red-700/50">🔄 Reset</button>
+                        <button id="btn-download" class="app-button bg-purple-500 text-white shadow-purple-700/50">⬇️ Download Hasil</button>
+                        <button id="btn-back-to-menu" class="app-button bg-gray-500 text-white shadow-gray-700/50 mt-4">🏠 Kembali ke Menu</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Penilaian (Disembunyikan) --><div id="grading-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+            <div id="modal-content" class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full border-4 border-pink-500 transform scale-100 transition-all duration-300">
+                <h2 id="grade-message" class="text-3xl font-extrabold text-pink-600 mb-4">Hebat Sekali!</h2>
+                <p class="text-lg text-gray-700 mb-6">Skor Kecocokan Warna Anda:</p>
+                <div class="bg-pink-100 p-4 rounded-lg mb-6">
+                    <p id="grade-score" class="text-5xl font-bold text-pink-700">95/100</p>
+                    <p id="grade-percentage" class="text-xl text-pink-600 mt-2">95% Kecocokan!</p>
+                </div>
+                <p id="motivation-text" class="text-lg font-medium text-gray-800 mb-8">Pesan motivasi akan muncul di sini.</p>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="modal-btn-download" class="app-button bg-purple-600 text-white shadow-purple-700/50">Download</button>
+                    <button id="modal-btn-close" class="app-button bg-gray-500 text-white shadow-gray-700/50">Tutup</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Data dan Konfigurasi
+        const mainMenu = document.getElementById('main-menu');
+        const coloringPage = document.getElementById('coloring-page');
+        const imageGrid = document.getElementById('image-selection-grid');
+        const colorPalette = document.getElementById('color-palette');
+        const svgContainer = document.getElementById('svg-container');
+        const refImgContainer = document.getElementById('reference-image-container');
+        const gradingModal = document.getElementById('grading-modal');
+        const coloringTitle = document.getElementById('coloring-title');
+        const statusMessage = document.getElementById('status-message');
+
+        // Palet warna dasar (Hex codes)
+        const PALETTE_COLORS = [
+            { name: "Merah", hex: "#E74C3C" },    // Merah
+            { name: "Kuning", hex: "#F1C40F" },   // Kuning
+            { name: "Biru", hex: "#3498DB" },     // Biru
+            { name: "Hijau", hex: "#2ECC71" },    // Hijau
+            { name: "Oranye", hex: "#E67E22" },   // Oranye
+            { name: "Ungu", hex: "#9B59B6" },     // Ungu
+            { name: "Hitam", hex: "#2C3E50" },    // Hitam
+            { name: "Putih", hex: "#ECF0F1" },    // Putih (putih off-white agar terlihat)
+            { name: "Merah muda", hex: "#FFC0CB" },// Merah Muda
+            { name: "Coklat", hex: "#A0522D" },   // Coklat
+            { name: "Abu-abu", hex: "#95A5A6" },   // Abu-abu
+            { name: "Biru muda", hex: "#A8DADC" }  // Biru Muda
+        ];
+
+        // Struktur Gambar Mewarnai (SVG dan warna referensi)
+        // Dibuat lebih representatif dengan path SVG yang lebih baik
+        const COLORING_TEMPLATES = [
+            {
+                id: 'apple',
+                name: 'Apel Manis',
+                paths: [
+                    // Bentuk apel yang lebih alami
+                    { id: 'p1', d: "M150,30 C100,0 50,30 50,130 C50,230 150,250 150,270 C150,250 250,230 250,130 C250,30 200,0 150,30 Z", refColor: "#E74C3C" },
+                    // Daun
+                    { id: 'p2', d: "M145,30 Q135,10 120,20 Q125,35 145,30 Z", refColor: "#2ECC71" },
+                    // Batang
+                    { id: 'p3', d: "M148,30 L152,30 L154,10 L146,10 Z", refColor: "#A0522D" }
+                ],
+            },
+            {
+                id: 'sun',
+                name: 'Matahari Tersenyum',
+                paths: [
+                    // Wajah Matahari (lingkaran)
+                    { id: 'p1', d: "M150 150 m -80, 0 a 80,80 0 1,0 160,0 a 80,80 0 1,0 -160,0", refColor: "#F1C40F" },
+                    // Sinar-sinar matahari yang lebih menarik
+                    { id: 'p2', d: "M150,70 L170,40 L150,20 L130,40 Z", refColor: "#E67E22" }, // Atas
+                    { id: 'p3', d: "M230,150 L260,170 L280,150 L260,130 Z", refColor: "#E67E22" }, // Kanan
+                    { id: 'p4', d: "M150,230 L170,260 L150,280 L130,260 Z", refColor: "#E67E22" }, // Bawah
+                    { id: 'p5', d: "M70,150 L40,170 L20,150 L40,130 Z", refColor: "#E67E22" }, // Kiri
+                    // Sinar diagonal
+                    { id: 'p6', d: "M205,95 L225,70 L205,50 L185,70 Z", refColor: "#E67E22" }, // Atas Kanan
+                    { id: 'p7', d: "M95,95 L75,70 L95,50 L115,70 Z", refColor: "#E67E22" }, // Atas Kiri
+                    { id: 'p8', d: "M205,205 L225,230 L205,250 L185,230 Z", refColor: "#E67E22" }, // Bawah Kanan
+                    { id: 'p9', d: "M95,205 L75,230 L95,250 L115,230 Z", refColor: "#E67E22" }  // Bawah Kiri
+                ],
+            }
+        ];
+
+        // State Aplikasi
+        let currentTemplate = null;
+        let currentColor = PALETTE_COLORS[0].hex; // Default ke warna pertama
+        let historyStack = [];
+        let futureStack = [];
+        const MAX_HISTORY = 50;
+        const DEFAULT_FILL_COLOR = '#FFFFFF'; // Warna default (belum diwarnai)
+
+        // Utility: Konversi Hex ke RGB
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return [r, g, b];
+        }
+
+        // Utility: Hitung Euclidean Distance (untuk penilaian kemiripan warna)
+        function colorSimilarity(color1, color2) {
+            const [r1, g1, b1] = hexToRgb(color1);
+            const [r2, g2, b2] = hexToRgb(color2);
+            
+            const distance = Math.sqrt(
+                Math.pow(r1 - r2, 2) +
+                Math.pow(g1 - g2, 2) +
+                Math.pow(b1 - b2, 2)
+            );
+            
+            const MAX_DISTANCE = 441.67; // Jarak maksimum
+            return Math.max(0, 100 - (distance / MAX_DISTANCE) * 100);
+        }
+        
+        // Utility: Konversi warna apapun ke format Hex (untuk perbandingan yang lebih baik)
+        function toHex(color) {
+            if (color.startsWith('#')) return color.toUpperCase();
+            if (color.startsWith('rgb')) {
+                const parts = color.match(/\d+/g).map(Number);
+                if (parts.length === 3) {
+                    return "#" + parts.map(x => {
+                        const hex = x.toString(16);
+                        return hex.length === 1 ? '0' + hex : hex;
+                    }).join('').toUpperCase();
+                }
+            }
+            return color.toUpperCase(); // Fallback
+        }
+
+        // --- MANAJEMEN TAMPILAN ---
+
+        function showScreen(screenId) {
+            mainMenu.classList.add('hidden');
+            coloringPage.classList.add('hidden');
+            gradingModal.classList.add('hidden');
+
+            if (screenId === 'menu') {
+                mainMenu.classList.remove('hidden');
+            } else if (screenId === 'coloring') {
+                coloringPage.classList.remove('hidden');
+            } else if (screenId === 'grading') {
+                gradingModal.classList.remove('hidden');
+            }
+        }
+
+        // --- MENU UTAMA ---
+
+        function setupMainMenu() {
+            imageGrid.innerHTML = ''; 
+            COLORING_TEMPLATES.forEach(template => {
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-white border-2 border-gray-300 rounded-xl shadow-lg hover:shadow-xl transition-shadow cursor-pointer text-center';
+                
+                // Gunakan SVG referensi sebagai thumbnail
+                const thumbnailSvg = createSvg(template, true);
+                thumbnailSvg.classList.add('pointer-events-none'); // Pastikan klik hanya pada div parent
+                
+                item.innerHTML = `
+                    <div class="w-full aspect-square flex items-center justify-center bg-gray-50 rounded-lg mb-2 border border-dashed border-gray-300">
+                        ${thumbnailSvg.outerHTML}
+                    </div>
+                    <p class="text-lg font-semibold text-gray-700">${template.name}</p>
+                `;
+                item.onclick = () => loadTemplate(template.id);
+                imageGrid.appendChild(item);
+            });
+            showScreen('menu');
+        }
+
+        // --- HALAMAN MEWARNAI ---
+
+        function loadTemplate(templateId) {
+            const template = COLORING_TEMPLATES.find(t => t.id === templateId);
+            if (!template) return;
+
+            currentTemplate = template;
+            historyStack = [];
+            futureStack = [];
+            coloringTitle.textContent = `Mewarnai: ${template.name}`;
+            statusMessage.textContent = 'Klik area gambar dan pilih warna!';
+
+            // 1. Injeksi SVG untuk Mewarnai (Garis Hitam, Isi Putih)
+            const svgBW = createSvg(template, false);
+            svgContainer.innerHTML = '';
+            svgContainer.appendChild(svgBW);
+
+            // 2. Injeksi SVG untuk Referensi (Berwarna)
+            const svgRef = createSvg(template, true);
+            refImgContainer.innerHTML = '';
+            refImgContainer.appendChild(svgRef);
+            
+            // 3. Setup event listeners untuk area mewarnai
+            svgBW.querySelectorAll('path').forEach(path => {
+                path.onclick = (e) => {
+                    if (e.target.tagName.toLowerCase() === 'path') {
+                        colorArea(e.target.id, currentColor);
+                    }
+                };
+            });
+
+            updateControlState();
+            showScreen('coloring');
+        }
+
+        function createSvg(template, isReference = false) {
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute('viewBox', '0 0 300 300');
+            svg.setAttribute('id', isReference ? `reference-svg-${template.id}` : 'coloring-svg');
+            svg.classList.add('w-full', 'h-full');
+
+            template.paths.forEach(p => {
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                
+                // CRITICAL FIX: Buat ID unik untuk setiap path
+                const pathId = isReference ? `ref-${template.id}-${p.id}` : `color-${template.id}-${p.id}`;
+                path.setAttribute('id', pathId); 
+                
+                path.setAttribute('d', p.d);
+                path.setAttribute('stroke', '#000000'); // Garis selalu hitam
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('data-ref-color', p.refColor);
+
+                if (isReference) {
+                    path.setAttribute('fill', p.refColor);
+                } else {
+                    path.setAttribute('fill', DEFAULT_FILL_COLOR);
+                }
+                svg.appendChild(path);
+            });
+            return svg;
+        }
+
+        // --- PALET WARNA ---
+
+        function setupColorPalette() {
+            colorPalette.innerHTML = '';
+            PALETTE_COLORS.forEach((color, index) => {
+                const swatch = document.createElement('div');
+                swatch.className = `color-swatch ${index === 0 ? 'selected' : ''}`;
+                swatch.style.backgroundColor = color.hex;
+                swatch.setAttribute('data-color', color.hex);
+                swatch.title = color.name;
+                
+                swatch.onclick = () => selectColor(color.hex);
+                colorPalette.appendChild(swatch);
+            });
+            selectColor(PALETTE_COLORS[0].hex);
+        }
+
+        function selectColor(hex) {
+            currentColor = hex;
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.classList.remove('selected');
+                if (swatch.getAttribute('data-color') === hex) {
+                    swatch.classList.add('selected');
+                }
+            });
+        }
+        
+        // --- LOGIKA MEWARNAI & HISTORY ---
+
+        function colorArea(pathId, color) {
+            const pathElement = document.getElementById(pathId);
+            if (!pathElement) return;
+            
+            const prevColor = pathElement.getAttribute('fill');
+            
+            if (toHex(prevColor) === toHex(color)) return; 
+            
+            historyStack.push({
+                pathId: pathId,
+                prevColor: prevColor,
+                newColor: color
+            });
+            
+            if (historyStack.length > MAX_HISTORY) {
+                historyStack.shift();
+            }
+
+            futureStack = []; 
+
+            pathElement.setAttribute('fill', color);
+            updateControlState();
+            
+            checkCompletionAndGrade();
+        }
+
+        function undo() {
+            if (historyStack.length === 0) return;
+
+            const action = historyStack.pop();
+            const pathElement = document.getElementById(action.pathId);
+            if (pathElement) {
+                pathElement.setAttribute('fill', action.prevColor);
+                futureStack.push(action);
+            }
+            updateControlState();
+            statusMessage.textContent = 'Undo berhasil!';
+            gradingModal.classList.add('hidden');
+        }
+
+        function redo() {
+            if (futureStack.length === 0) return;
+
+            const action = futureStack.pop();
+            const pathElement = document.getElementById(action.pathId);
+            if (pathElement) {
+                pathElement.setAttribute('fill', action.newColor);
+                historyStack.push(action);
+            }
+            updateControlState();
+            statusMessage.textContent = 'Redo berhasil!';
+        }
+        
+        function resetColoring() {
+             const pathElements = document.getElementById('coloring-svg').querySelectorAll('path');
+             pathElements.forEach(path => path.setAttribute('fill', DEFAULT_FILL_COLOR));
+             historyStack = [];
+             futureStack = [];
+             updateControlState();
+             statusMessage.textContent = 'Gambar telah direset ke awal.';
+             gradingModal.classList.add('hidden');
+        }
+
+        function updateControlState() {
+            document.getElementById('btn-undo').disabled = historyStack.length === 0;
+            document.getElementById('btn-redo').disabled = futureStack.length === 0;
+            document.getElementById('btn-undo').classList.toggle('opacity-50', historyStack.length === 0);
+            document.getElementById('btn-redo').classList.toggle('opacity-50', futureStack.length === 0);
+        }
+
+        function checkCompletionAndGrade() {
+            const pathElements = document.getElementById('coloring-svg').querySelectorAll('path');
+            let allColored = true;
+            let coloredCount = 0;
+            const totalPaths = pathElements.length;
+
+            pathElements.forEach(path => {
+                const paintedColor = toHex(path.getAttribute('fill'));
+
+                if (paintedColor === toHex(DEFAULT_FILL_COLOR)) {
+                    allColored = false;
+                } else {
+                    coloredCount++;
+                }
+            });
+
+            statusMessage.textContent = `Area diwarnai: ${coloredCount} dari ${totalPaths}.`;
+
+            if (allColored) {
+                statusMessage.textContent = 'Selesai! Sedang Menghitung Nilai...';
+                calculateGrade();
+            }
+        }
+
+        // --- SISTEM PENILAIAN ---
+
+        function calculateGrade() {
+            if (!currentTemplate) return;
+
+            let totalSimilarity = 0;
+            let totalPaths = 0;
+            const pathElements = document.getElementById('coloring-svg').querySelectorAll('path');
+
+            pathElements.forEach(path => {
+                const paintedColor = toHex(path.getAttribute('fill'));
+                const refColorHex = path.getAttribute('data-ref-color');
+                
+                if (paintedColor !== toHex(DEFAULT_FILL_COLOR)) {
+                    const similarity = colorSimilarity(paintedColor, refColorHex);
+                    totalSimilarity += similarity;
+                    totalPaths++;
+                }
+            });
+
+            let finalScore = 0;
+            let percentage = 0;
+            
+            if (totalPaths > 0) {
+                const avgSimilarity = totalSimilarity / totalPaths;
+                percentage = Math.round(avgSimilarity);
+                finalScore = Math.min(100, Math.round(avgSimilarity)); 
+            } 
+
+            displayGrade(finalScore, percentage);
+        }
+        
+        function displayGrade(score, percentage) {
+            let message = "";
+            let motivation = "";
+
+            if (score >= 90) {
+                message = "FANTASTIS! Karya Sempurna!";
+                motivation = "Warna-warni pilihanmu sangat tepat dan indah. Kamu adalah seniman cilik hebat!";
+            } else if (score >= 75) {
+                message = "BAGUS SEKALI!";
+                motivation = "Warnamu hampir sama dengan contoh, hebat! Coba lagi untuk lebih mendekati warna referensi.";
+            } else if (score >= 50) {
+                message = "CUKUP BAGUS!";
+                motivation = "Terus berlatih dan perhatikan warna referensi ya. Semangat belajar menggabungkan warna!";
+            } else {
+                message = "AYO, COBA LAGI!";
+                motivation = "Jangan putus asa! Mewarnai itu menyenangkan. Perhatikan palet warna dan contoh dengan lebih cermat.";
+            }
+
+            document.getElementById('grade-message').textContent = message;
+            document.getElementById('grade-score').textContent = `${score}/100`;
+            document.getElementById('grade-percentage').textContent = `${percentage}% Kecocokan!`;
+            document.getElementById('motivation-text').textContent = motivation;
+            
+            showScreen('grading');
+        }
+
+
+        // --- FUNGSI DOWNLOAD ---
+        
+        function downloadSVG(svgElementId, filename) {
+            const svgElement = document.getElementById(svgElementId);
+            const svgData = new XMLSerializer().serializeToString(svgElement);
+            const svgBlob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
+            const svgUrl = URL.createObjectURL(svgBlob);
+            
+            const canvas = document.createElement('canvas');
+            const svgBoundingBox = svgElement.getBBox();
+            
+            const width = svgBoundingBox.width || 300;
+            const height = svgBoundingBox.height || 300;
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            
+            const img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const pngUrl = canvas.toDataURL("image/png");
+                const downloadLink = document.createElement("a");
+                downloadLink.href = pngUrl;
+                downloadLink.download = `${filename}.png`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            };
+            img.onerror = function(err) {
+                console.error("Gagal konversi SVG ke PNG:", err);
+                const downloadLink = document.createElement("a");
+                downloadLink.href = svgUrl;
+                downloadLink.download = `${filename}.svg`; 
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                console.log("Gagal mengunduh sebagai PNG. Mengunduh sebagai SVG.");
+            };
+            img.src = svgUrl;
+        }
+
+
+        // --- EVENT LISTENERS GLOBAL ---
+        
+        document.getElementById('btn-undo').addEventListener('click', undo);
+        document.getElementById('btn-redo').addEventListener('click', redo);
+        document.getElementById('btn-reset').addEventListener('click', resetColoring);
+        document.getElementById('btn-back-to-menu').addEventListener('click', () => {
+            gradingModal.classList.add('hidden');
+            showScreen('menu');
+        });
+        document.getElementById('btn-download').addEventListener('click', () => {
+            const filename = `Hasil-Mewarnai-${currentTemplate ? currentTemplate.name : 'Gambar'}`;
+            downloadSVG('coloring-svg', filename);
+        });
+
+        document.getElementById('modal-btn-close').addEventListener('click', () => {
+            gradingModal.classList.add('hidden');
+            showScreen('menu'); 
+        });
+        document.getElementById('modal-btn-download').addEventListener('click', () => {
+            const filename = `Hasil-Mewarnai-${currentTemplate ? currentTemplate.name : 'Gambar'}-Lulus`;
+            downloadSVG('coloring-svg', filename);
+            gradingModal.classList.add('hidden'); 
+            showScreen('menu'); 
+        });
+
+        // Inisialisasi Aplikasi
+        window.onload = function() {
+            setupColorPalette();
+            setupMainMenu();
+        };
+
+    </script>
+</body>
+</html>
+
